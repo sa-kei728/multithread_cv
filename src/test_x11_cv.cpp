@@ -6,6 +6,7 @@
 #include <string>
 #include <array>
 #include <thread>
+#include <mutex>
 
 std::array<std::string, 3> video_array = {
     "/home/ksato/sandbox/multithread_cv/sample/test_1.mp4",
@@ -13,13 +14,15 @@ std::array<std::string, 3> video_array = {
     "/home/ksato/sandbox/multithread_cv/sample/test_3.mp4",
 };
 
+std::mutex x_mtx;
+
 void streaming_test(int index){
     int ret = 0;
     int key = 0;
 
     cv::Mat frame;
     cv::VideoCapture video;
-    video.open(video_array.at(index));
+    video.open(video_array.at(index % 3));
     if(!video.isOpened()){
         std::cout << "ERROR: Can't open " << video_array.at(index) << std::endl;
         return;
@@ -33,12 +36,19 @@ void streaming_test(int index){
             video.set(CV_CAP_PROP_POS_FRAMES, 0);
             continue;
         }
-        cv::imshow(window_name, frame);
-        key = cv::waitKey(1);
+
+        {
+            std::lock_guard<std::mutex>   lock(x_mtx);
+            cv::imshow(window_name, frame);
+            key = cv::waitKey(1);
+        }
         if(key == 'q')  break;
     }
-
-    cv::destroyAllWindows();
+    
+    {
+        std::lock_guard<std::mutex>   lock(x_mtx);
+        cv::destroyAllWindows();
+    }
     return;
 }
 
